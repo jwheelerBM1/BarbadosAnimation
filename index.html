@@ -27,25 +27,25 @@
             0%, 100% { transform: translateY(0px) rotate(0deg); }
             50% { transform: translateY(-9px) rotate(-1.5deg); }
         }
-        @keyframes wave-motion {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50px); }
-        }
-        @keyframes pulse-ring {
-            0% { transform: scale(0.95); opacity: 0.8; }
-            50% { transform: scale(1.05); opacity: 1; }
-            100% { transform: scale(0.95); opacity: 0.8; }
-        }
         
         .floating-buoy-1 { animation: float 4s ease-in-out infinite; }
         .floating-buoy-2 { animation: float-delay 4.5s ease-in-out infinite; }
-        .pulse-element { animation: pulse-ring 3s ease-in-out infinite; }
         
         /* Glassmorphism */
         .glass-panel {
             background: rgba(13, 22, 41, 0.85);
             backdrop-filter: blur(14px);
             border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* SVG Packet Stream Animation */
+        .data-packet {
+            fill: #38bdf8;
+            filter: drop-shadow(0px 0px 4px #0ea5e9);
+        }
+        .sat-packet {
+            fill: #fbbf24;
+            filter: drop-shadow(0px 0px 4px #f59e0b);
         }
     </style>
 </head>
@@ -54,29 +54,30 @@
     <header class="bg-brand-navy border-b-4 border-brand text-white sticky top-0 z-40 shadow-md">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         <div class="flex items-center space-x-4">
-          <img src="BMLogoWhite.png" alt="Bluemvmt Logo" class="h-10 w-auto object-contain">
+          <img src="BMlogoWhite.png" alt="Bluemvmt Logo" class="h-10 w-auto object-contain">
           <div class="hidden md:block h-6 w-px bg-slate-700"></div>
           <span class="hidden md:inline-block text-xs uppercase tracking-widest text-slate-400 font-medium">
-                    <div class="flex flex-col">
+                <div class="flex flex-col">
                     <span class="font-extrabold text-xl tracking-tight text-white flex items-center gap-1.5">
                         <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800 font-normal">Cloud Platform</span>
                     </span>
                     <span class="text-[10px] text-slate-400 font-mono">Folkestone Marine Research Park • Barbados Pilot</span>
                 </div>
-            </div>
+            </span>
         </div>
 
         <!-- Telemetry & Simulation Controls -->
         <div class="flex items-center gap-3">
-            <button id="toggle-data-flow" class="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold flex items-center gap-2 transition-all shadow-lg shadow-cyan-600/30">
-                <i class="fa-solid fa-pause text-xs"></i>
-                <span>Pause Packet Stream</span>
+            <button id="toggle-data-flow" onclick="toggleStream()" class="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold flex items-center gap-2 transition-all shadow-lg shadow-cyan-600/30">
+                <i id="stream-icon" class="fa-solid fa-pause text-xs"></i>
+                <span id="stream-btn-text">Pause Packet Stream</span>
             </button>
             <button id="view-json-btn" onclick="openJsonModal()" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-mono font-medium border border-slate-700 flex items-center gap-1.5">
                 <i class="fa-solid fa-code"></i>
                 <span>View API JSON</span>
             </button>
         </div>
+      </div>
     </header>
 
     <!-- Main Content Area -->
@@ -111,7 +112,6 @@
                     
                     <svg id="ocean-svg" class="w-full h-full absolute inset-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" preserveAspectRatio="xMidYMid slice">
                         <defs>
-                            <!-- Ocean Depth Gradient -->
                             <linearGradient id="ocean-bg" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stop-color="#0284c7" stop-opacity="0.25"/>
                                 <stop offset="35%" stop-color="#0369a1" stop-opacity="0.55"/>
@@ -123,11 +123,6 @@
                                 <stop offset="0%" stop-color="#1e293b"/>
                                 <stop offset="100%" stop-color="#0f172a"/>
                             </linearGradient>
-
-                            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                                <feGaussianBlur stdDeviation="3" result="blur"/>
-                                <feComposite in="SourceGraphic" in2="blur" operator="over"/>
-                            </filter>
                         </defs>
 
                         <!-- Background Ocean Fill -->
@@ -151,18 +146,14 @@
                         <line x1="420" y1="170" x2="420" y2="435" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 3"/>
                         <circle cx="420" cy="435" r="5" fill="#64748b" stroke="#f59e0b" stroke-width="1.5"/>
 
-                        <!-- Telemetry Wireless Stream Paths -->
+                        <!-- Telemetry Paths for Animated Packets -->
                         <path id="path-buoy1-tower" d="M 220 150 Q 380 60, 580 85" fill="none" stroke="#0ea5e9" stroke-width="1.8" stroke-dasharray="5 5"/>
                         <path id="path-buoy2-tower" d="M 420 150 Q 500 70, 580 85" fill="none" stroke="#0ea5e9" stroke-width="1.8" stroke-dasharray="5 5"/>
-                        
-                        <!-- Satellite Backup Paths -->
                         <path id="path-sat-link" d="M 220 150 Q 280 20, 360 25" fill="none" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.5"/>
                         <path id="path-sat-tower" d="M 360 25 Q 480 20, 580 85" fill="none" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.5"/>
+                        <path id="path-tower-api" d="M 580 85 L 750 85" fill="none" stroke="#38bdf8" stroke-width="2.5"/>
 
-                        <!-- Tower to API Gateway -->
-                        <path id="path-tower-api" d="M 580 110 L 680 110" fill="none" stroke="#38bdf8" stroke-width="2.5"/>
-
-                        <!-- Dynamic Animated Signal Particles Group -->
+                        <!-- Dynamic Animated Signal Particles Container -->
                         <g id="svg-particles"></g>
                     </svg>
 
@@ -199,7 +190,6 @@
                             
                             <!-- Spotter Buoy #1 Column (Inshore Water Quality) -->
                             <div class="col-span-4 flex flex-col items-start pl-[18%] pointer-events-auto">
-                                <!-- Buoy #1 Surface Marker -->
                                 <div class="floating-buoy-1 cursor-pointer group flex flex-col items-center" onclick="selectNode('buoy1')">
                                     <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 border-2 border-slate-900 flex items-center justify-center text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20">
                                         #1
@@ -209,9 +199,8 @@
                                     </div>
                                 </div>
 
-                                <!-- Correct Sensor Cards for Buoy #1 -->
                                 <div class="mt-8 space-y-2 max-w-[160px]">
-                                    <div class="bg-slate-900/90 border border-cyan-500/50 hover:border-cyan-400 p-2 rounded-lg text-[9px] cursor-pointer transition-all shadow-md" onclick="selectNode('b1-sensors')">
+                                    <div class="bg-slate-900/90 border border-cyan-500/50 hover:border-cyan-400 p-2 rounded-lg text-[9px] cursor-pointer transition-all shadow-md" onclick="selectNode('buoy1')">
                                         <div class="font-bold text-cyan-300 flex items-center justify-between border-b border-slate-800 pb-1">
                                             <span>Attached Sensors</span>
                                             <i class="fa-solid fa-microchip text-cyan-400"></i>
@@ -219,7 +208,7 @@
                                         <ul class="mt-1 space-y-0.5 text-slate-300 font-mono">
                                             <li class="flex items-center gap-1"><i class="fa-solid fa-temperature-half text-amber-400 text-[8px]"></i> Sofar Temp Sensor</li>
                                             <li class="flex items-center gap-1"><i class="fa-solid fa-vial text-cyan-400 text-[8px]"></i> Dissolved Oxygen</li>
-                                            <li class="flex items-center gap-1"><i class="fa-solid fa-[#00f0ff] fa-droplet text-blue-400 text-[8px]"></i> Salinity Sensor</li>
+                                            <li class="flex items-center gap-1"><i class="fa-solid fa-droplet text-blue-400 text-[8px]"></i> Salinity Sensor</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -227,7 +216,6 @@
 
                             <!-- Spotter Buoy #2 Column (Offshore Waves & Currents) -->
                             <div class="col-span-5 flex flex-col items-start pl-[22%] pointer-events-auto">
-                                <!-- Buoy #2 Surface Marker -->
                                 <div class="floating-buoy-2 cursor-pointer group flex flex-col items-center" onclick="selectNode('buoy2')">
                                     <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 border-2 border-slate-900 flex items-center justify-center text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20">
                                         #2
@@ -237,9 +225,8 @@
                                     </div>
                                 </div>
 
-                                <!-- Correct Sensor Cards for Buoy #2 -->
                                 <div class="mt-8 space-y-2 max-w-[170px]">
-                                    <div class="bg-slate-900/90 border border-emerald-500/50 hover:border-emerald-400 p-2 rounded-lg text-[9px] cursor-pointer transition-all shadow-md" onclick="selectNode('b2-sensors')">
+                                    <div class="bg-slate-900/90 border border-emerald-500/50 hover:border-emerald-400 p-2 rounded-lg text-[9px] cursor-pointer transition-all shadow-md" onclick="selectNode('buoy2')">
                                         <div class="font-bold text-emerald-300 flex items-center justify-between border-b border-slate-800 pb-1">
                                             <span>Currents & Pressure Payload</span>
                                             <i class="fa-solid fa-wave-square text-emerald-400"></i>
@@ -260,7 +247,7 @@
                 </div>
             </div>
 
-            <!-- API Endpoint Flowchart (Recreating exact PDF structure with API Gateway Icon) -->
+            <!-- API Endpoint Flowchart -->
             <div class="glass-panel rounded-2xl p-4 border border-slate-800/80">
                 <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                     <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
@@ -323,7 +310,6 @@
             <div class="glass-panel rounded-2xl p-4 border border-slate-800/80 flex flex-col">
                 <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
                     <div class="flex items-center gap-2">
-                        <!-- Official Small Bluemvmt Logo -->
                         <svg width="20" height="20" viewBox="0 0 100 100" fill="none">
                             <path d="M25 25 C38 12 62 12 75 25 C88 38 88 62 75 75 C62 88 38 88 25 75 C12 62 12 38 25 25 Z" stroke="#38bdf8" stroke-width="14" fill="none"/>
                             <path d="M50 20 C32 35 32 65 50 80 C68 65 68 35 50 20 Z" fill="#0284c7"/>
@@ -351,37 +337,19 @@
                         <span class="px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 font-mono text-[9px]">ZAIS TENANT</span>
                     </div>
 
-                    <!-- Subsea Viewport & Control Layout (Replicating Screenshot) -->
+                    <!-- Clean Screenshot Viewport Container -->
                     <div class="p-2.5 bg-slate-950 space-y-2">
                         
-                        <!-- Main Subsea Camera Viewport -->
-                        <div class="relative w-full h-44 rounded-lg bg-gradient-to-b from-sky-950 to-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center">
-                            
-                            <!-- Stylized Subsea Reef Vector Backdrop -->
-                            <svg class="absolute inset-0 w-full h-full opacity-60" viewBox="0 0 300 150">
-                                <path d="M0 150 L30 110 L70 130 L120 80 L180 140 L240 90 L300 150 Z" fill="#0f172a"/>
-                                <path d="M40 150 Q50 90 60 150 Q70 80 80 150" fill="none" stroke="#10b981" stroke-width="2"/>
-                                <path d="M150 150 Q160 70 170 150 Q180 60 190 150" fill="none" stroke="#059669" stroke-width="2.5"/>
-                            </svg>
-
-                            <!-- Live Streaming Wifi Symbol Overlay -->
-                            <div class="absolute bottom-2 left-2 flex items-center gap-1.5 bg-slate-900/80 px-2 py-1 rounded border border-emerald-500/40 text-[9px] text-emerald-400">
-                                <i class="fa-solid fa-wifi animate-pulse"></i>
-                                <span class="font-mono">Live Feed</span>
-                            </div>
-
-                            <div class="text-center z-10">
-                                <div class="text-xs font-bold text-white tracking-wide">Folkestone Subsea Viewport</div>
-                                <div class="text-[9px] text-cyan-300 font-mono mt-0.5">Depth: 21.8m • Facing: 45°</div>
-                            </div>
+                        <!-- Clean dtrep.png Image Display without Overlays -->
+                        <div class="bg-slate-900 p-2 rounded-xl border border-slate-800 shadow-xl text-center">
+                            <img src="dtrep.png" alt="Bluemvmt HoloOcean 3D Simulation Viewport" class="w-full h-48 object-contain rounded border border-slate-700/80 shadow-md bg-slate-950">
+                            <p class="text-[10px] text-slate-400 mt-2 font-medium">Figure: Bluemvmt HoloOcean 3D simulation viewport with real-time AUV telemetry and camera controls.</p>
                         </div>
 
-                        <!-- Directional Camera Controls & Telemetry Pane -->
+                        <!-- Directional Controls & Telemetry Block -->
                         <div class="grid grid-cols-2 gap-2 text-[9px]">
-                            
-                            <!-- Camera Direction Controls Block -->
                             <div class="bg-slate-900 p-2 rounded border border-slate-800 space-y-1 text-center">
-                                <div class="text-slate-400 font-bold text-[8px] uppercase">Camera Navigation</div>
+                                <div class="text-slate-400 font-bold text-[8px] uppercase">Camera Controls</div>
                                 <div class="grid grid-cols-3 gap-1">
                                     <span></span>
                                     <button class="bg-slate-800 hover:bg-slate-700 p-1 rounded text-slate-200">Forward</button>
@@ -392,7 +360,6 @@
                                 </div>
                             </div>
 
-                            <!-- Live Telemetry Stream Block -->
                             <div class="bg-slate-900 p-2 rounded border border-slate-800 space-y-1 font-mono">
                                 <div class="text-cyan-400 font-bold text-[8px] uppercase border-b border-slate-800 pb-0.5">Ingested Metrics</div>
                                 <div class="flex justify-between text-slate-300">
@@ -408,14 +375,13 @@
                                     <span class="text-emerald-300 font-bold" id="ui-current">0.4 m/s</span>
                                 </div>
                             </div>
-
                         </div>
 
                     </div>
                 </div>
             </div>
 
-            <!-- Interactive Dynamic Inspector Panel -->
+            <!-- Component Inspector Panel -->
             <div class="glass-panel rounded-2xl p-4 border border-slate-800/80 flex-1 flex flex-col justify-between" id="inspector-card">
                 <div>
                     <div class="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-800">
@@ -493,163 +459,184 @@
         </div>
     </div>
 
-    <!-- Interactive Script -->
+    <!-- Animation & Interactive JavaScript -->
     <script>
-        const nodes = {
+        let isStreaming = true;
+        let animationFrameId;
+
+        const nodeData = {
             'buoy1': {
-                tag: 'SURFACE BUOY #1',
-                title: 'Spotter Buoy #1 (Water Quality Configuration)',
-                status: 'TRANSMITTING',
-                desc: 'Inshore smart mooring deployed off Folkestone Park. Focuses on ocean water quality parameters.',
+                tag: 'SMART MOORING BUOY #1',
+                title: 'Spotter #1 (Inshore Water Quality)',
+                desc: 'Located at 15m depth off Folkestone Park. Streams real-time ocean temperature, oxygen levels, and salinity.',
                 specs: [
-                    { label: 'Configuration:', val: 'Water Quality' },
-                    { label: 'Attached Sensors:', val: 'Sofar Temp, Dissolved Oxygen, Salinity' },
-                    { label: 'Primary Link:', val: 'Cellular LTE ($50/mo)' },
-                    { label: 'Equipment Total:', val: '$24,030.00 USD' }
+                    { label: 'Deployment:', value: 'Inshore 15m' },
+                    { label: 'Sensors:', value: 'Temp, Dissolved O2, Salinity' },
+                    { label: 'Telemetry:', value: 'Cellular LTE ($50/mo)' }
                 ]
             },
             'buoy2': {
-                tag: 'SURFACE BUOY #2',
-                title: 'Spotter Buoy #2 (Waves & Currents Configuration)',
-                status: 'TRANSMITTING',
-                desc: 'Offshore smart mooring deployed at 30m depth. Collects hydrodynamic wave, current, and pressure metrics.',
+                tag: 'SMART MOORING BUOY #2',
+                title: 'Spotter #2 (Offshore Waves & Currents)',
+                desc: 'Located at 30m seaward boundary. Measures directional waves, current velocities, and hydrodynamic pressure.',
                 specs: [
-                    { label: 'Configuration:', val: 'Spotter Currents' },
-                    { label: 'Attached Sensors:', val: 'Current Meter, Pressure Sensor' },
-                    { label: 'Interface Module:', val: 'Bristlemouth Dev Kit' },
-                    { label: 'Equipment Total:', val: '$27,835.00 USD' }
+                    { label: 'Deployment:', value: 'Offshore 30m' },
+                    { label: 'Sensors:', value: 'Current Meter, Pressure, Bristlemouth' },
+                    { label: 'Telemetry:', value: 'Cellular + Iridium Failover' }
                 ]
             },
-            'b1-sensors': {
-                tag: 'BUOY #1 SENSOR PAYLOAD',
-                title: 'Water Quality Sensor Payload',
-                status: 'ACTIVE (15M)',
-                desc: 'Sensors connected to Spotter #1 for water chemistry continuous profiling.',
+            'sat': {
+                tag: 'TELEMETRY BACKUP',
+                title: 'Iridium Satellite SBD Network',
+                desc: 'Automated satellite failover transmission ensuring uninterrupted data flow during cellular signal drops.',
                 specs: [
-                    { label: 'Temperature:', val: 'Sofar Smart Temperature Sensor' },
-                    { label: 'Oxygen:', val: 'Dissolved Oxygen Sensor' },
-                    { label: 'Salinity:', val: 'Salinity Sensor' }
+                    { label: 'Bandwidth:', value: 'Short Burst Data (SBD)' },
+                    { label: 'Latency:', value: '< 60 Seconds' },
+                    { label: 'Status:', value: 'Standby / Failover Active' }
                 ]
             },
-            'b2-sensors': {
-                tag: 'BUOY #2 SENSOR PAYLOAD',
-                title: 'Hydrodynamic & Bus Payload',
-                status: 'ACTIVE (30M)',
-                desc: 'Subsurface current meter and pressure sensor linked via Bristlemouth open-bus development kit.',
+            'tower': {
+                tag: 'PRIMARY TELEMETRY',
+                title: 'Barbados Coastal 4G LTE Tower',
+                desc: 'Primary cellular link receiving real-time data packets from both Spotter buoys off Folkestone.',
                 specs: [
-                    { label: 'Current Meter:', val: 'Subsurface Current Meter / Profiler' },
-                    { label: 'Pressure Sensor:', val: 'Pressure Sensor Module' },
-                    { label: 'Dev Architecture:', val: 'Bristlemouth Interface Dev Kit' }
+                    { label: 'Protocol:', value: '4G LTE Cellular' },
+                    { label: 'Frequency:', value: 'High Bandwidth Stream' },
+                    { label: 'Cost:', value: '$50/mo Subscription' }
                 ]
             },
             'sofar-api': {
-                tag: 'API PROTOCOL - STEP 1',
+                tag: 'API SOURCE',
                 title: 'Sofar Ocean API Endpoint',
-                status: 'ONLINE',
-                desc: 'Source API delivering raw Spotter & Smart Mooring JSON telemetry payloads.',
+                desc: 'REST API service serving telemetry payloads collected by Spotter buoys and Smart Moorings.',
                 specs: [
-                    { label: 'Auth Protocol:', val: 'GET (Token Auth)' },
-                    { label: 'Payload Format:', val: 'JSON Stream' }
+                    { label: 'Protocol:', value: 'GET (Token Auth)' },
+                    { label: 'Format:', value: 'JSON Payload' },
+                    { label: 'Frequency:', value: 'Continuous Stream' }
                 ]
             },
             'middleware': {
-                tag: 'API PROTOCOL - STEP 2',
-                title: 'Middleware Engine (Extract / Transform)',
-                status: 'PROCESSING',
-                desc: 'Performs normalization and unit conversion before forwarding data to Bluemvmt API.',
+                tag: 'ETL PROCESSING',
+                title: 'Bluemvmt Middleware Engine',
+                desc: 'Extracts raw Sofar JSON telemetry and transforms parameters into standardized oceanographic metrics.',
                 specs: [
-                    { label: 'Action:', val: 'Extract / Transform (ETL)' },
-                    { label: 'Forward Method:', val: 'POST (OAuth2 / REST API)' }
+                    { label: 'Engine:', value: 'Extract / Transform (ETL)' },
+                    { label: 'Latency:', value: '< 15ms' },
+                    { label: 'Target:', value: 'Bluemvmt Ingestion API' }
                 ]
             },
             'bluemvmt-api': {
-                tag: 'API PROTOCOL - STEP 3',
-                title: 'Bluemvmt Platform Data Ingestion API',
-                status: 'INGESTING',
-                desc: 'Destination endpoint feeding real-time metrics into the Bluemvmt Cloud Platform & Digital Twin.',
+                tag: 'INGESTION ENGINE',
+                title: 'Bluemvmt Platform Data API',
+                desc: 'Receives transformed telemetry via OAuth2 REST endpoints and feeds live inputs directly into the Digital Twin.',
                 specs: [
-                    { label: 'Platform:', val: 'Bluemvmt Cloud Platform' },
-                    { label: 'Target View:', val: 'HoloOcean Digital Twin' }
+                    { label: 'Endpoint:', value: 'POST (OAuth2 / REST)' },
+                    { label: 'Ingestion:', value: 'Active Real-Time' },
+                    { label: 'Status:', value: 'Healthy (200 OK)' }
                 ]
             }
         };
 
         function selectNode(key) {
-            const data = nodes[key];
+            const data = nodeData[key];
             if (!data) return;
-
+            
             document.getElementById('node-tag').innerText = data.tag;
-            document.getElementById('node-status').innerText = data.status;
             document.getElementById('node-title').innerText = data.title;
             document.getElementById('node-desc').innerText = data.desc;
 
-            const specsEl = document.getElementById('node-specs');
-            specsEl.innerHTML = '';
+            let html = '';
             data.specs.forEach(s => {
-                const row = document.createElement('div');
-                row.className = 'flex justify-between py-0.5 border-b border-slate-800/60 last:border-0';
-                row.innerHTML = `<span class="text-slate-400">${s.label}</span><span class="text-cyan-300 font-semibold">${s.val}</span>`;
-                specsEl.appendChild(row);
+                html += `
+                    <div class="flex justify-between py-0.5 border-b border-slate-800/60">
+                        <span class="text-slate-400">${s.label}</span>
+                        <span class="text-cyan-300 font-semibold">${s.value}</span>
+                    </div>
+                `;
+            });
+            document.getElementById('node-specs').innerHTML = html;
+        }
+
+        function openJsonModal() {
+            document.getElementById('json-modal').classList.remove('hidden');
+        }
+        function closeJsonModal() {
+            document.getElementById('json-modal').classList.add('hidden');
+        }
+
+        // Setup SVG Stream Animation Packets
+        const particlesGroup = document.getElementById('svg-particles');
+        const pathIds = ['path-buoy1-tower', 'path-buoy2-tower', 'path-sat-link', 'path-sat-tower', 'path-tower-api'];
+        const particles = [];
+
+        function initParticles() {
+            particlesGroup.innerHTML = '';
+            particles.length = 0;
+
+            pathIds.forEach(id => {
+                const pathEl = document.getElementById(id);
+                if (!pathEl) return;
+
+                const isSat = id.includes('sat');
+                const count = isSat ? 2 : 3;
+
+                for (let i = 0; i < count; i++) {
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('r', isSat ? '3' : '4');
+                    circle.setAttribute('class', isSat ? 'sat-packet' : 'data-packet');
+                    particlesGroup.appendChild(circle);
+
+                    particles.push({
+                        element: circle,
+                        path: pathEl,
+                        length: pathEl.getTotalLength(),
+                        progress: (i / count) * pathEl.getTotalLength(),
+                        speed: isSat ? 1.2 : 2.0
+                    });
+                }
             });
         }
 
-        // Particle Animation Logic
-        let animating = true;
-        const particleContainer = document.getElementById('svg-particles');
+        function animateParticles() {
+            if (isStreaming) {
+                particles.forEach(p => {
+                    p.progress += p.speed;
+                    if (p.progress >= p.length) {
+                        p.progress = 0;
+                    }
+                    const pt = p.path.getPointAtLength(p.progress);
+                    p.element.setAttribute('cx', pt.x);
+                    p.element.setAttribute('cy', pt.y);
+                });
 
-        function spawnParticle(pathId, fill) {
-            const path = document.getElementById(pathId);
-            if (!path) return;
-            const length = path.getTotalLength();
-            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            circle.setAttribute('r', '3');
-            circle.setAttribute('fill', fill);
-            particleContainer.appendChild(circle);
-
-            let start = null;
-            const duration = 2400;
-
-            function step(time) {
-                if (!start) start = time;
-                const progress = ((time - start) % duration) / duration;
-                const pt = path.getPointAtLength(progress * length);
-                circle.setAttribute('cx', pt.x);
-                circle.setAttribute('cy', pt.y);
-
-                if (animating) {
-                    requestAnimationFrame(step);
-                } else {
-                    circle.remove();
+                // Random subtle variance in real-time display metrics
+                if (Math.random() < 0.05) {
+                    document.getElementById('ui-temp').innerText = (28.4 + (Math.random() * 0.2 - 0.1)).toFixed(1) + ' °C';
+                    document.getElementById('ui-do').innerText = (6.8 + (Math.random() * 0.1 - 0.05)).toFixed(2) + ' mg/L';
                 }
             }
-            requestAnimationFrame(step);
+            animationFrameId = requestAnimationFrame(animateParticles);
         }
 
-        function runParticleStream() {
-            if (!animating) return;
-            spawnParticle('path-buoy1-tower', '#38bdf8');
-            spawnParticle('path-buoy2-tower', '#0ea5e9');
-            setTimeout(() => { if (animating) spawnParticle('path-tower-api', '#38bdf8'); }, 900);
-            setTimeout(runParticleStream, 1500);
-        }
+        function toggleStream() {
+            isStreaming = !isStreaming;
+            const btnText = document.getElementById('stream-btn-text');
+            const btnIcon = document.getElementById('stream-icon');
 
-        document.getElementById('toggle-data-flow').addEventListener('click', function() {
-            animating = !animating;
-            if (animating) {
-                this.innerHTML = '<i class="fa-solid fa-pause text-xs"></i><span>Pause Packet Stream</span>';
-                runParticleStream();
+            if (isStreaming) {
+                btnText.innerText = 'Pause Packet Stream';
+                btnIcon.className = 'fa-solid fa-pause text-xs';
             } else {
-                this.innerHTML = '<i class="fa-solid fa-play text-xs"></i><span>Play Packet Stream</span>';
-                particleContainer.innerHTML = '';
+                btnText.innerText = 'Resume Packet Stream';
+                btnIcon.className = 'fa-solid fa-play text-xs';
             }
+        }
+
+        // Initialize and Start Loop
+        window.addEventListener('load', () => {
+            initParticles();
+            animateParticles();
         });
-
-        function openJsonModal() { document.getElementById('json-modal').classList.remove('hidden'); }
-        function closeJsonModal() { document.getElementById('json-modal').classList.add('hidden'); }
-
-        window.onload = function() {
-            runParticleStream();
-        };
     </script>
 </body>
 </html>
