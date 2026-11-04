@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Folkestone Oceanographic Telemetry System Architecture</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #080d1a;
+            color: #f1f5f9;
+            overflow-x: hidden;
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Custom Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-7px) rotate(1deg); }
+        }
+        @keyframes float-delay {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-9px) rotate(-1.5deg); }
+        }
+        @keyframes wave-motion {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50px); }
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        
+        .floating-buoy-1 { animation: float 4s ease-in-out infinite; }
+        .floating-buoy-2 { animation: float-delay 4.5s ease-in-out infinite; }
+        .pulse-element { animation: pulse-ring 3s ease-in-out infinite; }
+        
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(13, 22, 41, 0.85);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <!-- Header Navigation -->
+    <header class="bg-brand-navy border-b-4 border-brand text-white sticky top-0 z-40 shadow-md">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+          <img src="BMlogoWhite.png" alt="Bluemvmt Logo" class="h-10 w-auto object-contain">
+          <div class="hidden md:block h-6 w-px bg-slate-700"></div>
+          <span class="hidden md:inline-block text-xs uppercase tracking-widest text-slate-400 font-medium">
+                    <div class="flex flex-col">
+                    <span class="font-extrabold text-xl tracking-tight text-white flex items-center gap-1.5">
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800 font-normal">Cloud Platform</span>
+                    </span>
+                    <span class="text-[10px] text-slate-400 font-mono">Folkestone Marine Research Park • Barbados Pilot</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Telemetry & Simulation Controls -->
+        <div class="flex items-center gap-3">
+            <button id="toggle-data-flow" class="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold flex items-center gap-2 transition-all shadow-lg shadow-cyan-600/30">
+                <i class="fa-solid fa-pause text-xs"></i>
+                <span>Pause Packet Stream</span>
+            </button>
+            <button id="view-json-btn" onclick="openJsonModal()" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-mono font-medium border border-slate-700 flex items-center gap-1.5">
+                <i class="fa-solid fa-code"></i>
+                <span>View API JSON</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1920px] mx-auto w-full">
+        
+        <!-- Left & Center Section: Ocean Cross Section & API Flowchart -->
+        <section class="lg:col-span-8 flex flex-col gap-5">
+            
+            <!-- Dynamic SVG Graphic Canvas -->
+            <div class="glass-panel rounded-2xl p-4 lg:p-5 relative overflow-hidden flex flex-col border border-slate-800/80 shadow-2xl">
+                
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-800/80">
+                    <div>
+                        <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-water text-cyan-400"></i>
+                            Folkestone Ocean Cross-Section & Sensor Data Flow
+                        </h2>
+                        <p class="text-[11px] text-slate-400">Real-Time Data Transmission from Smart Moorings to Bluemvmt Ingestion Engine</p>
+                    </div>
+                    <div class="flex items-center gap-2 text-[10px]">
+                        <span class="px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono">
+                            <i class="fa-solid fa-signal text-[9px] mr-1"></i>4G LTE Primary
+                        </span>
+                        <span class="px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 font-mono">
+                            <i class="fa-solid fa-satellite text-[9px] mr-1"></i>Iridium Failover
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Integrated SVG Container -->
+                <div class="relative w-full rounded-xl bg-slate-950 border border-slate-800/80 overflow-hidden min-h-[460px]">
+                    
+                    <svg id="ocean-svg" class="w-full h-full absolute inset-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" preserveAspectRatio="xMidYMid slice">
+                        <defs>
+                            <!-- Ocean Depth Gradient -->
+                            <linearGradient id="ocean-bg" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#0284c7" stop-opacity="0.25"/>
+                                <stop offset="35%" stop-color="#0369a1" stop-opacity="0.55"/>
+                                <stop offset="70%" stop-color="#075985" stop-opacity="0.8"/>
+                                <stop offset="100%" stop-color="#0c4a6e" stop-opacity="0.98"/>
+                            </linearGradient>
+
+                            <linearGradient id="seabed-bg" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#1e293b"/>
+                                <stop offset="100%" stop-color="#0f172a"/>
+                            </linearGradient>
+
+                            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                                <feGaussianBlur stdDeviation="3" result="blur"/>
+                                <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                            </filter>
+                        </defs>
+
+                        <!-- Background Ocean Fill -->
+                        <path d="M 0 170 Q 150 160, 300 170 T 600 170 T 900 170 L 900 480 L 0 480 Z" fill="url(#ocean-bg)"/>
+
+                        <!-- Seabed Bedrock Contour -->
+                        <path d="M 0 440 Q 180 430, 300 445 T 550 435 T 900 450 L 900 480 L 0 480 Z" fill="url(#seabed-bg)" stroke="#334155" stroke-width="1.5"/>
+
+                        <!-- Coastal Beach Slope -->
+                        <path d="M 0 170 L 120 170 L 0 440 Z" fill="#1e293b" opacity="0.8"/>
+                        <text x="15" y="190" fill="#94a3b8" font-size="10" font-weight="bold">Folkestone Coast</text>
+
+                        <!-- Animated Surface Waves -->
+                        <path d="M 0 170 Q 100 163, 200 170 T 400 170 T 600 170 T 800 170 T 900 170" fill="none" stroke="#38bdf8" stroke-width="2" opacity="0.8"/>
+
+                        <!-- Smart Mooring Line #1 (Inshore) -->
+                        <line x1="220" y1="170" x2="220" y2="440" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 3"/>
+                        <circle cx="220" cy="440" r="5" fill="#64748b" stroke="#f59e0b" stroke-width="1.5"/>
+
+                        <!-- Smart Mooring Line #2 (Offshore) -->
+                        <line x1="420" y1="170" x2="420" y2="435" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 3"/>
+                        <circle cx="420" cy="435" r="5" fill="#64748b" stroke="#f59e0b" stroke-width="1.5"/>
+
+                        <!-- Telemetry Wireless Stream Paths -->
+                        <path id="path-buoy1-tower" d="M 220 150 Q 380 60, 580 85" fill="none" stroke="#0ea5e9" stroke-width="1.8" stroke-dasharray="5 5"/>
+                        <path id="path-buoy2-tower" d="M 420 150 Q 500 70, 580 85" fill="none" stroke="#0ea5e9" stroke-width="1.8" stroke-dasharray="5 5"/>
+                        
+                        <!-- Satellite Backup Paths -->
+                        <path id="path-sat-link" d="M 220 150 Q 280 20, 360 25" fill="none" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.5"/>
+                        <path id="path-sat-tower" d="M 360 25 Q 480 20, 580 85" fill="none" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.5"/>
+
+                        <!-- Tower to API Gateway -->
+                        <path id="path-tower-api" d="M 580 110 L 680 110" fill="none" stroke="#38bdf8" stroke-width="2.5"/>
+
+                        <!-- Dynamic Animated Signal Particles Group -->
+                        <g id="svg-particles"></g>
+                    </svg>
+
+                    <!-- Interactive Nodes Overlay Layer -->
+                    <div class="absolute inset-0 z-20 pointer-events-none p-4 flex flex-col justify-between">
+                        
+                        <!-- Atmosphere Header: Satellite & Cell Tower -->
+                        <div class="flex items-start justify-between">
+                            <!-- Satellite Node -->
+                            <div class="pointer-events-auto bg-slate-900/90 border border-amber-500/50 hover:border-amber-400 p-2 rounded-lg cursor-pointer shadow-lg transition-all ml-[35%]" onclick="selectNode('sat')">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-satellite text-amber-400 text-sm"></i>
+                                    <div>
+                                        <div class="text-[10px] font-bold text-white">Iridium Satellite</div>
+                                        <div class="text-[8px] text-amber-400 font-mono">Failover Backup</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cellular Tower Node -->
+                            <div class="pointer-events-auto bg-slate-900/90 border border-cyan-500/50 hover:border-cyan-400 p-2 rounded-lg cursor-pointer shadow-lg transition-all mr-[22%]" onclick="selectNode('tower')">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-tower-cell text-cyan-400 text-sm animate-pulse"></i>
+                                    <div>
+                                        <div class="text-[10px] font-bold text-white">Cellular Tower</div>
+                                        <div class="text-[8px] text-cyan-400 font-mono">LTE Direct Network</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Buoy Stations Overlay -->
+                        <div class="grid grid-cols-12 gap-2 my-auto items-start">
+                            
+                            <!-- Spotter Buoy #1 Column (Inshore Water Quality) -->
+                            <div class="col-span-4 flex flex-col items-start pl-[18%] pointer-events-auto">
+                                <!-- Buoy #1 Surface Marker -->
+                                <div class="floating-buoy-1 cursor-pointer group flex flex-col items-center" onclick="selectNode('buoy1')">
+                                    <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 border-2 border-slate-900 flex items-center justify-center text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20">
+                                        #1
+                                    </div>
+                                    <div class="mt-1 px-2 py-0.5 rounded bg-slate-900/95 border border-amber-500/60 text-[10px] font-bold text-amber-300 text-center">
+                                        Spotter #1 (Water Quality)
+                                    </div>
+                                </div>
+
+                                <!-- Correct Sensor Cards for Buoy #1 -->
+                                <div class="mt-8 space-y-2 max-w-[160px]">
+                                    <div class="bg-slate-900/90 border border-cyan-500/50 hover:border-cyan-400 p-2 rounded-lg text-[9px] cursor-pointer transition-all shadow-md" onclick="selectNode('b1-sensors')">
+                                        <div class="font-bold text-cyan-300 flex items-center justify-between border-b border-slate-800 pb-1">
+                                            <span>Attached Sensors</span>
+                                            <i class="fa-solid fa-microchip text-cyan-400"></i>
+                                        </div>
+                                        <ul class="mt-1 space-y-0.5 text-slate-300 font-mono">
+                                            <li class="flex items-center gap-1"><i class="fa-solid fa-temperature-half text-amber-400 text-[8px]"></i> Sofar Temp Sensor</li>
+                                            <li class="flex items-center gap-1"><i class="fa-solid fa-vial text-cyan-400 text-[8px]"></i> Dissolved Oxygen</li>
+                                            <li class="flex items-center gap-1"><i class="fa-solid fa-[#00f0ff] fa-droplet text-blue-400 text-[8px]"></i> Salinity Sensor</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Spotter Buoy #2 Column (Offshore Waves & Currents) -->
+                            <div class="col-span-5 flex flex-col items-start pl-[22%] pointer-events-auto">
+                                <!-- Buoy #2 Surface Marker -->
+                                <div class="floating-buoy-2 cursor-pointer group flex flex-col items-center" onclick="selectNode('buoy2')">
+                                    <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 border-2 border-slate-900 flex items-center justify-center text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20">
+                                        #2
+                                    </div>
+                                    <div class="mt-1 px-2 py-0.5 rounded bg-slate-900/95 border border-amber-500/60 text-[10px] font-bold text-amber-300 text-center">
+                                        Spotter #2 (Waves & Currents)
+                                    </div>
+                                </div>
+
+                                <!-- Correct Sensor Cards for Buoy #2 -->
+                                <div class="mt-8 space-y-2 max-w-[170px]">
+                                    <div class="bg-slate-900/90 border border-emerald-500/50 hover:border-emerald-400 p-2 rounded-lg text-[9px] cursor-pointer transition-all shadow-md" onclick="selectNode('b2-sensors')">
+                                        <div class="font-bold text-emerald-300 flex items-center justify-between border-b border-slate-800 pb-1">
+                                            <span>Currents & Pressure Payload</span>
+                                            <i class="fa-solid fa-wave-square text-emerald-400"></i>
+                                        </div>
+                                        <ul class="mt-1 space-y-0.5 text-slate-300 font-mono">
+                                            <li class="flex items-center gap-1"><i class="fa-solid fa-compass text-emerald-400 text-[8px]"></i> Current Meter / Profiler</li>
+                                            <li class="flex items-center gap-1"><i class="fa-solid fa-gauge-high text-amber-400 text-[8px]"></i> Pressure Sensor</li>
+                                            <li class="flex items-center gap-1"><i class="fa-solid fa-network-wired text-cyan-400 text-[8px]"></i> Bristlemouth Dev Kit</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- API Endpoint Flowchart (Recreating exact PDF structure with API Gateway Icon) -->
+            <div class="glass-panel rounded-2xl p-4 border border-slate-800/80">
+                <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+                    <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-diagram-project text-cyan-400"></i>
+                        API Endpoint Integration Protocol (Per PDF Spec)
+                    </h3>
+                    <span class="text-[10px] text-cyan-400 font-mono">JSON Endpoint Active</span>
+                </div>
+
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs">
+                    <div class="grid grid-cols-1 md:grid-cols-11 gap-2 items-center text-center">
+                        
+                        <!-- Box 1: Sofar Ocean API -->
+                        <div class="md:col-span-3 bg-slate-900 border border-slate-700 p-3 rounded-lg hover:border-cyan-500 transition-all cursor-pointer" onclick="selectNode('sofar-api')">
+                            <div class="text-[9px] text-cyan-400 font-bold mb-1">DATA SOURCE API</div>
+                            <div class="font-bold text-white text-xs">Sofar Ocean API</div>
+                            <div class="text-[10px] text-slate-400">(Spotter / Mooring)</div>
+                        </div>
+
+                        <!-- Arrow 1: GET Token Auth & JSON Payload -->
+                        <div class="md:col-span-1 flex flex-col items-center justify-center my-1 md:my-0">
+                            <i class="fa-solid fa-right-left text-cyan-400 text-sm animate-pulse"></i>
+                            <span class="text-[8px] text-cyan-300 font-bold mt-1">GET (Token)</span>
+                            <span class="text-[8px] text-amber-400">JSON Payload</span>
+                        </div>
+
+                        <!-- Box 2: Middleware Engine -->
+                        <div class="md:col-span-3 bg-slate-900 border border-amber-500/50 p-3 rounded-lg hover:border-amber-400 transition-all cursor-pointer" onclick="selectNode('middleware')">
+                            <div class="text-[9px] text-amber-400 font-bold mb-1">TRANSFORMATION</div>
+                            <div class="font-bold text-white text-xs">Middleware Engine</div>
+                            <div class="text-[10px] text-slate-400">(Extract / Transform)</div>
+                        </div>
+
+                        <!-- Arrow 2: POST OAuth2/REST -->
+                        <div class="md:col-span-1 flex flex-col items-center justify-center my-1 md:my-0">
+                            <i class="fa-solid fa-arrow-right text-emerald-400 text-sm animate-bounce"></i>
+                            <span class="text-[8px] text-emerald-400 font-bold mt-1">POST</span>
+                            <span class="text-[8px] text-slate-400">OAuth2/REST</span>
+                        </div>
+
+                        <!-- Box 3 Target: Bluemvmt API Gateway Icon -->
+                        <div class="md:col-span-3 bg-slate-900 border border-emerald-500 p-3 rounded-lg hover:border-emerald-400 transition-all cursor-pointer flex flex-col items-center justify-center shadow-lg shadow-emerald-950/40" onclick="selectNode('bluemvmt-api')">
+                            <div class="flex items-center gap-1.5 text-emerald-400 font-bold text-xs mb-0.5">
+                                <i class="fa-solid fa-circle-nodes text-sm"></i>
+                                <span>Bluemvmt Platform</span>
+                            </div>
+                            <div class="text-[10px] text-slate-300">(Data Ingestion API)</div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Section: Bluemvmt Platform HoloOcean Viewport & Node Inspector -->
+        <section class="lg:col-span-4 flex flex-col gap-5">
+            
+            <!-- Laptop Device Frame containing Bluemvmt HoloOcean UI -->
+            <div class="glass-panel rounded-2xl p-4 border border-slate-800/80 flex flex-col">
+                <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <!-- Official Small Bluemvmt Logo -->
+                        <svg width="20" height="20" viewBox="0 0 100 100" fill="none">
+                            <path d="M25 25 C38 12 62 12 75 25 C88 38 88 62 75 75 C62 88 38 88 25 75 C12 62 12 38 25 25 Z" stroke="#38bdf8" stroke-width="14" fill="none"/>
+                            <path d="M50 20 C32 35 32 65 50 80 C68 65 68 35 50 20 Z" fill="#0284c7"/>
+                        </svg>
+                        <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                            Bluemvmt Digital Twin Platform
+                        </h3>
+                    </div>
+                    <span class="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Ingestion Active
+                    </span>
+                </div>
+
+                <!-- HoloOcean Replica Dashboard Frame -->
+                <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex flex-col">
+                    
+                    <!-- Top Bar -->
+                    <div class="bg-slate-900/90 px-3 py-2 border-b border-slate-800 flex items-center justify-between text-[10px]">
+                        <div class="flex items-center gap-2 font-semibold">
+                            <span class="text-cyan-400">bluemvmt</span>
+                            <span class="text-slate-600">|</span>
+                            <span class="text-slate-300">HoloOcean Digital Twin</span>
+                        </div>
+                        <span class="px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 font-mono text-[9px]">ZAIS TENANT</span>
+                    </div>
+
+                    <!-- Subsea Viewport & Control Layout (Replicating Screenshot) -->
+                    <div class="p-2.5 bg-slate-950 space-y-2">
+                        
+                        <!-- Main Subsea Camera Viewport -->
+                        <div class="relative w-full h-44 rounded-lg bg-gradient-to-b from-sky-950 to-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center">
+                            
+                            <!-- Stylized Subsea Reef Vector Backdrop -->
+                            <svg class="absolute inset-0 w-full h-full opacity-60" viewBox="0 0 300 150">
+                                <path d="M0 150 L30 110 L70 130 L120 80 L180 140 L240 90 L300 150 Z" fill="#0f172a"/>
+                                <path d="M40 150 Q50 90 60 150 Q70 80 80 150" fill="none" stroke="#10b981" stroke-width="2"/>
+                                <path d="M150 150 Q160 70 170 150 Q180 60 190 150" fill="none" stroke="#059669" stroke-width="2.5"/>
+                            </svg>
+
+                            <!-- Live Streaming Wifi Symbol Overlay -->
+                            <div class="absolute bottom-2 left-2 flex items-center gap-1.5 bg-slate-900/80 px-2 py-1 rounded border border-emerald-500/40 text-[9px] text-emerald-400">
+                                <i class="fa-solid fa-wifi animate-pulse"></i>
+                                <span class="font-mono">Live Feed</span>
+                            </div>
+
+                            <div class="text-center z-10">
+                                <div class="text-xs font-bold text-white tracking-wide">Folkestone Subsea Viewport</div>
+                                <div class="text-[9px] text-cyan-300 font-mono mt-0.5">Depth: 21.8m • Facing: 45°</div>
+                            </div>
+                        </div>
+
+                        <!-- Directional Camera Controls & Telemetry Pane -->
+                        <div class="grid grid-cols-2 gap-2 text-[9px]">
+                            
+                            <!-- Camera Direction Controls Block -->
+                            <div class="bg-slate-900 p-2 rounded border border-slate-800 space-y-1 text-center">
+                                <div class="text-slate-400 font-bold text-[8px] uppercase">Camera Navigation</div>
+                                <div class="grid grid-cols-3 gap-1">
+                                    <span></span>
+                                    <button class="bg-slate-800 hover:bg-slate-700 p-1 rounded text-slate-200">Forward</button>
+                                    <span></span>
+                                    <button class="bg-slate-800 hover:bg-slate-700 p-1 rounded text-slate-200">Left</button>
+                                    <button class="bg-slate-800 hover:bg-slate-700 p-1 rounded text-slate-200">Back</button>
+                                    <button class="bg-slate-800 hover:bg-slate-700 p-1 rounded text-slate-200">Right</button>
+                                </div>
+                            </div>
+
+                            <!-- Live Telemetry Stream Block -->
+                            <div class="bg-slate-900 p-2 rounded border border-slate-800 space-y-1 font-mono">
+                                <div class="text-cyan-400 font-bold text-[8px] uppercase border-b border-slate-800 pb-0.5">Ingested Metrics</div>
+                                <div class="flex justify-between text-slate-300">
+                                    <span>Temp:</span>
+                                    <span class="text-amber-300 font-bold" id="ui-temp">28.4 °C</span>
+                                </div>
+                                <div class="flex justify-between text-slate-300">
+                                    <span>Oxygen:</span>
+                                    <span class="text-cyan-300 font-bold" id="ui-do">6.8 mg/L</span>
+                                </div>
+                                <div class="flex justify-between text-slate-300">
+                                    <span>Current:</span>
+                                    <span class="text-emerald-300 font-bold" id="ui-current">0.4 m/s</span>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Dynamic Inspector Panel -->
+            <div class="glass-panel rounded-2xl p-4 border border-slate-800/80 flex-1 flex flex-col justify-between" id="inspector-card">
+                <div>
+                    <div class="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-800">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-cyan-400 font-mono" id="node-tag">COMPONENT INSPECTOR</span>
+                        <span class="text-[10px] text-emerald-400 font-mono bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800" id="node-status">ACTIVE</span>
+                    </div>
+
+                    <h3 class="text-sm font-bold text-white mb-1" id="node-title">Spotter Buoy #1 (Inshore)</h3>
+                    <p class="text-xs text-slate-300 mb-3 leading-relaxed" id="node-desc">
+                        Nearshore smart mooring buoy monitoring water quality metrics off Folkestone Marine Park.
+                    </p>
+
+                    <div class="bg-slate-950/80 rounded-xl p-3 border border-slate-800 space-y-1.5 text-xs font-mono" id="node-specs">
+                        <div class="flex justify-between py-0.5 border-b border-slate-800/60">
+                            <span class="text-slate-400">Configuration:</span>
+                            <span class="text-cyan-300 font-semibold">Water Quality</span>
+                        </div>
+                        <div class="flex justify-between py-0.5 border-b border-slate-800/60">
+                            <span class="text-slate-400">Attached Sensors:</span>
+                            <span class="text-slate-200">Temp, DO, Salinity</span>
+                        </div>
+                        <div class="flex justify-between py-0.5 border-b border-slate-800/60">
+                            <span class="text-slate-400">Telemetry:</span>
+                            <span class="text-emerald-400 font-semibold">Cellular + Satellite</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3 pt-2 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
+                    <span>Click any diagram node to inspect specs</span>
+                    <i class="fa-solid fa-hand-pointer text-cyan-400"></i>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- JSON Payload Modal -->
+    <div id="json-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-lg w-full rounded-2xl p-5 border border-slate-700 shadow-2xl">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 class="text-xs font-bold text-cyan-400 font-mono flex items-center gap-2">
+                    <i class="fa-solid fa-code"></i> Live Ingested JSON Payload
+                </h3>
+                <button onclick="closeJsonModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
+            </div>
+            <pre class="mt-3 bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs text-emerald-400 font-mono overflow-x-auto max-h-80">
+{
+  "station": "Folkestone_Reserve_Barbados",
+  "spotter_buoys": [
+    {
+      "id": "SB-01-WQ",
+      "depth_m": 15,
+      "telemetry": "Cellular_LTE",
+      "sensors": {
+        "water_temperature_c": 28.4,
+        "dissolved_oxygen_mg_l": 6.82,
+        "salinity_psu": 35.1
+      }
+    },
+    {
+      "id": "SB-02-CURRENTS",
+      "depth_m": 30,
+      "bus": "Bristlemouth_Dev_Kit",
+      "sensors": {
+        "current_speed_m_s": 0.42,
+        "pressure_dbar": 3.02,
+        "wave_height_m": 1.35
+      }
+    }
+  ]
+}
+            </pre>
+        </div>
+    </div>
+
+    <!-- Interactive Script -->
+    <script>
+        const nodes = {
+            'buoy1': {
+                tag: 'SURFACE BUOY #1',
+                title: 'Spotter Buoy #1 (Water Quality Configuration)',
+                status: 'TRANSMITTING',
+                desc: 'Inshore smart mooring deployed off Folkestone Park. Focuses on ocean water quality parameters.',
+                specs: [
+                    { label: 'Configuration:', val: 'Water Quality' },
+                    { label: 'Attached Sensors:', val: 'Sofar Temp, Dissolved Oxygen, Salinity' },
+                    { label: 'Primary Link:', val: 'Cellular LTE ($50/mo)' },
+                    { label: 'Equipment Total:', val: '$24,030.00 USD' }
+                ]
+            },
+            'buoy2': {
+                tag: 'SURFACE BUOY #2',
+                title: 'Spotter Buoy #2 (Waves & Currents Configuration)',
+                status: 'TRANSMITTING',
+                desc: 'Offshore smart mooring deployed at 30m depth. Collects hydrodynamic wave, current, and pressure metrics.',
+                specs: [
+                    { label: 'Configuration:', val: 'Spotter Currents' },
+                    { label: 'Attached Sensors:', val: 'Current Meter, Pressure Sensor' },
+                    { label: 'Interface Module:', val: 'Bristlemouth Dev Kit' },
+                    { label: 'Equipment Total:', val: '$27,835.00 USD' }
+                ]
+            },
+            'b1-sensors': {
+                tag: 'BUOY #1 SENSOR PAYLOAD',
+                title: 'Water Quality Sensor Payload',
+                status: 'ACTIVE (15M)',
+                desc: 'Sensors connected to Spotter #1 for water chemistry continuous profiling.',
+                specs: [
+                    { label: 'Temperature:', val: 'Sofar Smart Temperature Sensor' },
+                    { label: 'Oxygen:', val: 'Dissolved Oxygen Sensor' },
+                    { label: 'Salinity:', val: 'Salinity Sensor' }
+                ]
+            },
+            'b2-sensors': {
+                tag: 'BUOY #2 SENSOR PAYLOAD',
+                title: 'Hydrodynamic & Bus Payload',
+                status: 'ACTIVE (30M)',
+                desc: 'Subsurface current meter and pressure sensor linked via Bristlemouth open-bus development kit.',
+                specs: [
+                    { label: 'Current Meter:', val: 'Subsurface Current Meter / Profiler' },
+                    { label: 'Pressure Sensor:', val: 'Pressure Sensor Module' },
+                    { label: 'Dev Architecture:', val: 'Bristlemouth Interface Dev Kit' }
+                ]
+            },
+            'sofar-api': {
+                tag: 'API PROTOCOL - STEP 1',
+                title: 'Sofar Ocean API Endpoint',
+                status: 'ONLINE',
+                desc: 'Source API delivering raw Spotter & Smart Mooring JSON telemetry payloads.',
+                specs: [
+                    { label: 'Auth Protocol:', val: 'GET (Token Auth)' },
+                    { label: 'Payload Format:', val: 'JSON Stream' }
+                ]
+            },
+            'middleware': {
+                tag: 'API PROTOCOL - STEP 2',
+                title: 'Middleware Engine (Extract / Transform)',
+                status: 'PROCESSING',
+                desc: 'Performs normalization and unit conversion before forwarding data to Bluemvmt API.',
+                specs: [
+                    { label: 'Action:', val: 'Extract / Transform (ETL)' },
+                    { label: 'Forward Method:', val: 'POST (OAuth2 / REST API)' }
+                ]
+            },
+            'bluemvmt-api': {
+                tag: 'API PROTOCOL - STEP 3',
+                title: 'Bluemvmt Platform Data Ingestion API',
+                status: 'INGESTING',
+                desc: 'Destination endpoint feeding real-time metrics into the Bluemvmt Cloud Platform & Digital Twin.',
+                specs: [
+                    { label: 'Platform:', val: 'Bluemvmt Cloud Platform' },
+                    { label: 'Target View:', val: 'HoloOcean Digital Twin' }
+                ]
+            }
+        };
+
+        function selectNode(key) {
+            const data = nodes[key];
+            if (!data) return;
+
+            document.getElementById('node-tag').innerText = data.tag;
+            document.getElementById('node-status').innerText = data.status;
+            document.getElementById('node-title').innerText = data.title;
+            document.getElementById('node-desc').innerText = data.desc;
+
+            const specsEl = document.getElementById('node-specs');
+            specsEl.innerHTML = '';
+            data.specs.forEach(s => {
+                const row = document.createElement('div');
+                row.className = 'flex justify-between py-0.5 border-b border-slate-800/60 last:border-0';
+                row.innerHTML = `<span class="text-slate-400">${s.label}</span><span class="text-cyan-300 font-semibold">${s.val}</span>`;
+                specsEl.appendChild(row);
+            });
+        }
+
+        // Particle Animation Logic
+        let animating = true;
+        const particleContainer = document.getElementById('svg-particles');
+
+        function spawnParticle(pathId, fill) {
+            const path = document.getElementById(pathId);
+            if (!path) return;
+            const length = path.getTotalLength();
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('r', '3');
+            circle.setAttribute('fill', fill);
+            particleContainer.appendChild(circle);
+
+            let start = null;
+            const duration = 2400;
+
+            function step(time) {
+                if (!start) start = time;
+                const progress = ((time - start) % duration) / duration;
+                const pt = path.getPointAtLength(progress * length);
+                circle.setAttribute('cx', pt.x);
+                circle.setAttribute('cy', pt.y);
+
+                if (animating) {
+                    requestAnimationFrame(step);
+                } else {
+                    circle.remove();
+                }
+            }
+            requestAnimationFrame(step);
+        }
+
+        function runParticleStream() {
+            if (!animating) return;
+            spawnParticle('path-buoy1-tower', '#38bdf8');
+            spawnParticle('path-buoy2-tower', '#0ea5e9');
+            setTimeout(() => { if (animating) spawnParticle('path-tower-api', '#38bdf8'); }, 900);
+            setTimeout(runParticleStream, 1500);
+        }
+
+        document.getElementById('toggle-data-flow').addEventListener('click', function() {
+            animating = !animating;
+            if (animating) {
+                this.innerHTML = '<i class="fa-solid fa-pause text-xs"></i><span>Pause Packet Stream</span>';
+                runParticleStream();
+            } else {
+                this.innerHTML = '<i class="fa-solid fa-play text-xs"></i><span>Play Packet Stream</span>';
+                particleContainer.innerHTML = '';
+            }
+        });
+
+        function openJsonModal() { document.getElementById('json-modal').classList.remove('hidden'); }
+        function closeJsonModal() { document.getElementById('json-modal').classList.add('hidden'); }
+
+        window.onload = function() {
+            runParticleStream();
+        };
+    </script>
+</body>
+</html>
